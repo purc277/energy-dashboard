@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>⚡ Energy Dashboard</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+    h1 { font-size: 22px; font-weight: 700; color: #f8fafc; }
+    .subtitle { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+    #lastUpdated { font-size: 12px; color: #475569; }
+
+    /* URL Input */
+    .input-box {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .input-box label { font-size: 13px; color: #94a3b8; white-space: nowrap; }
+    .input-box input[type=text] {
+      flex: 1;
+      min-width: 200px;
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      padding: 8px 12px;
+      color: #f1f5f9;
+      font-size: 13px;
+      outline: none;
+    }
+    .input-box input[type=text]:focus { border-color: #3b82f6; }
+
+    .btn {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn:hover { background: #2563eb; }
+    .btn:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+    .btn-sm {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .btn-sm:hover { border-color: #64748b; color: #e2e8f0; }
+
+    /* Refresh badge */
+    .refresh-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #164e63;
+      color: #67e8f9;
+      border: 1px solid #0e7490;
+    }
+    #countdown { font-size: 12px; color: #475569; }
+
+    /* Status */
+    #status {
+      font-size: 13px;
+      color: #f59e0b;
+      margin-bottom: 16px;
+      min-height: 20px;
+    }
+    #status.ok  { color: #22c55e; }
+    #status.err { color: #ef4444; }
+
+    /* KPI Cards */
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      padding: 20px 24px;
+    }
+    .card .label {
+      font-size: 11px;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+    .card .value { font-size: 34px; font-weight: 700; line-height: 1; }
+    .card .unit  { font-size: 13px; color: #94a3b8; margin-left: 4px; }
+    .card.blue   .value { color: #60a5fa; }
+    .card.green  .value { color: #34d399; }
+    .card.orange .value { color: #fb923c; }
+    .card.purple .value { color: #a78bfa; }
+
+    /* Charts */
+    .charts {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+    }
+    .chart-box {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      padding: 20px 24px;
+    }
+    .chart-box h2 {
+      font-size: 13px;
+      color: #94a3b8;
+      margin-bottom: 16px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    canvas { max-height: 260px; }
+
+    /* Table */
+    .table-wrap {
+      margin-top: 20px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .table-wrap h2 {
+      font-size: 13px;
+      color: #94a3b8;
+      font-weight: 600;
+      padding: 16px 20px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 12px; }
+    th {
+      text-align: left;
+      padding: 8px 20px;
+      color: #475569;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid #334155;
+    }
+    td { padding: 10px 20px; border-bottom: 1px solid #0f172a; color: #cbd5e1; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #0f172a44; }
+    .td-num { text-align: right; font-variant-numeric: tabular-nums; color: #60a5fa; }
+
+    /* Spinner */
+    .spin {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid #334155;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Instruction */
+    .instruction {
+      background: #172033;
+      border: 1px solid #1e3a5f;
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      line-height: 1.8;
+      color: #94a3b8;
+    }
+    .instruction strong { color: #60a5fa; }
+    .instruction code {
+      background: #0f172a;
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: #34d399;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div>
+      <h1>⚡ Energy Dashboard</h1>
+    </div>
+    <div id="lastUpdated"></div>
+  </div>
+  <p class="subtitle">KWh รวม · KWh รายวัน · อัปเดตอัตโนมัติทุก 5 นาที</p>
+
+  <div class="instruction">
+    <strong>วิธีเชื่อมต่อ Google Sheets:</strong><br>
+    1. เปิด Google Sheets → <strong>File → Share → Publish to web</strong><br>
+    2. เลือก Sheet → Format: <strong>Comma-separated values (.csv)</strong> → กด Publish<br>
+    3. Copy link แล้ววางในช่องด้านล่าง → กด <strong>บันทึกและโหลด</strong>
+  </div>
+
+  <div class="input-box">
+    <label>Google Sheets CSV URL:</label>
+    <input type="text" id="csvUrl" placeholder="https://docs.google.com/spreadsheets/d/e/.../pub?output=csv" />
+    <button class="btn" id="loadBtn" onclick="saveAndLoad()">บันทึกและโหลด</button>
+  </div>
+
+  <div class="refresh-row">
+    <span class="badge">🔄 Auto-refresh ทุก 5 นาที</span>
+    <span id="countdown"></span>
+    <button class="btn-sm" onclick="fetchNow()">รีเฟรชเดี๋ยวนี้</button>
+  </div>
+
+  <div id="status"></div>
+
+  <!-- KPI Cards -->
+  <div class="cards">
+    <div class="card blue">
+      <div class="label">⚡ KWh รวมทั้งหมด</div>
+      <div class="value" id="totalKwh">—<span class="unit">kWh</span></div>
+    </div>
+    <div class="card green">
+      <div class="label">📅 KWh วันนี้</div>
+      <div class="value" id="todayKwh">—<span class="unit">kWh</span></div>
+    </div>
+    <div class="card orange">
+      <div class="label">📊 เฉลี่ยต่อวัน</div>
+      <div class="value" id="avgKwh">—<span class="unit">kWh</span></div>
+    </div>
+    <div class="card purple">
+      <div class="label">⚙️ Power ล่าสุด</div>
+      <div class="value" id="latestPower">—<span class="unit">W</span></div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="charts">
+    <div class="chart-box">
+      <h2>📊 KWh รายวัน</h2>
+      <canvas id="dailyChart"></canvas>
+    </div>
+    <div class="chart-box">
+      <h2>📈 Power (W) 100 ค่าล่าสุด</h2>
+      <canvas id="powerChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Daily Table -->
+  <div class="table-wrap" id="tableWrap" style="display:none">
+    <h2>📋 ตารางสรุปรายวัน</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>วันที่</th>
+          <th style="text-align:right">KWh วันนั้น</th>
+          <th style="text-align:right">KWh สะสม</th>
+          <th style="text-align:right">Power เฉลี่ย (W)</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+<script>
+  let dailyChartInst = null;
+  let powerChartInst = null;
+  let refreshTimer = null;
+  let countdownTimer = null;
+  let secondsLeft = 300;
+
+  const STORAGE_KEY = 'energy_csv_url';
+  const REFRESH_SEC = 300; // 5 minutes
+
+  // ---- INIT ----
+  window.onload = function() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      document.getElementById('csvUrl').value = saved;
+      fetchNow();
+    }
+  };
+
+  // ---- SAVE URL & LOAD ----
+  function saveAndLoad() {
+    const url = document.getElementById('csvUrl').value.trim();
+    if (!url) { setStatus('⚠️ กรุณากรอก URL ก่อน', 'err'); return; }
+    localStorage.setItem(STORAGE_KEY, url);
+    fetchNow();
+  }
+
+  // ---- FETCH ----
+  async function fetchNow() {
+    const url = document.getElementById('csvUrl').value.trim() || localStorage.getItem(STORAGE_KEY);
+    if (!url) { setStatus('⚠️ กรุณากรอก URL ก่อน', 'err'); return; }
+
+    setStatus('<span class="spin"></span>กำลังโหลดข้อมูล...', '');
+    document.getElementById('status').innerHTML = '<span class="spin"></span> กำลังโหลด...';
+
+    const proxies = [
+      url,
+      'https://corsproxy.io/?' + encodeURIComponent(url),
+      'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+    ];
+
+    for (let i = 0; i < proxies.length; i++) {
+      try {
+        const res = await fetch(proxies[i]);
+        if (!res.ok) continue;
+        const text = await res.text();
+        if (!text || text.trim().startsWith('<')) continue;
+        const parsed = parseCSV(text);
+        if (!parsed.length) continue;
+        render(parsed);
+        const now = new Date().toLocaleString('th-TH');
+        document.getElementById('lastUpdated').textContent = '🕐 อัปเดตล่าสุด: ' + now;
+        setStatus('✅ โหลดสำเร็จ ' + parsed.length.toLocaleString() + ' แถว', 'ok');
+        startCountdown();
+        return;
+      } catch (_) { continue; }
+    }
+
+    setStatus('❌ โหลดไม่สำเร็จ — ตรวจสอบ URL หรือการตั้งค่า Publish', 'err');
+    startCountdown();
+  }
+
+  // ---- COUNTDOWN ----
+  function startCountdown() {
+    clearInterval(refreshTimer);
+    clearInterval(countdownTimer);
+    secondsLeft = REFRESH_SEC;
+    updateCountdown();
+    countdownTimer = setInterval(() => {
+      secondsLeft--;
+      updateCountdown();
+      if (secondsLeft <= 0) {
+        clearInterval(countdownTimer);
+        fetchNow();
+      }
+    }, 1000);
+  }
+
+  function updateCountdown() {
+    const m = Math.floor(secondsLeft / 60);
+    const s = secondsLeft % 60;
+    document.getElementById('countdown').textContent =
+      `รีเฟรชใน ${m}:${String(s).padStart(2,'0')} นาที`;
+  }
+
+  // ---- PARSE CSV ----
+  function parseCSV(text) {
+    const lines = text.trim().split('\n');
+    const header = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z0-9]/g,''));
+    const tsIdx = header.findIndex(h => h.includes('timestamp') || h.includes('time') || h.includes('date'));
+    const vIdx  = header.findIndex(h => h.includes('voltage') || h === 'v');
+    const cIdx  = header.findIndex(h => h.includes('current') || h === 'a');
+    const pIdx  = header.findIndex(h => h.includes('power') || h === 'w');
+    const eIdx  = header.findIndex(h => h.includes('energy') || h.includes('kwh'));
+
+    const results = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',').map(c => c.trim().replace(/^"|"$/g,''));
+      if (!cols[tsIdx]) continue;
+      const ts = cols[tsIdx] || '';
+      const date = ts.includes(' ') ? ts.split(' ')[0] : ts.split('T')[0];
+      results.push({
+        ts, date,
+        voltage: parseFloat(cols[vIdx]) || 0,
+        current: parseFloat(cols[cIdx]) || 0,
+        power:   parseFloat(cols[pIdx]) || 0,
+        energy:  parseFloat(cols[eIdx]) || 0
+      });
+    }
+    return results.filter(r => r.ts && !isNaN(r.energy));
+  }
+
+  // ---- RENDER ----
+  function render(data) {
+    if (!data.length) return;
+
+    const totalKwh = data[data.length - 1].energy;
+    const latestPower = data[data.length - 1].power;
+
+    const byDate = {};
+    data.forEach(r => {
+      if (!byDate[r.date]) byDate[r.date] = [];
+      byDate[r.date].push(r);
+    });
+
+    const dates = Object.keys(byDate).sort();
+    const dailyKwh = [];
+    let prevEnergy = null;
+
+    dates.forEach((d, idx) => {
+      const rows = byDate[d];
+      const first = rows[0].energy;
+      const last  = rows[rows.length - 1].energy;
+      const kwh = idx === 0
+        ? parseFloat((last - first).toFixed(4))
+        : parseFloat((last - prevEnergy).toFixed(4));
+      dailyKwh.push({ date: d, kwh: Math.max(0, kwh), avgPower: avg(rows.map(r => r.power)) });
+      prevEnergy = last;
+    });
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayEntry = dailyKwh.find(d => d.date === todayStr);
+    const todayKwh = todayEntry ? todayEntry.kwh : dailyKwh[dailyKwh.length - 1]?.kwh ?? 0;
+    const avgKwh = dailyKwh.reduce((s, d) => s + d.kwh, 0) / dailyKwh.length;
+
+    document.getElementById('totalKwh').innerHTML   = totalKwh.toFixed(3)   + '<span class="unit">kWh</span>';
+    document.getElementById('todayKwh').innerHTML   = todayKwh.toFixed(3)   + '<span class="unit">kWh</span>';
+    document.getElementById('avgKwh').innerHTML     = avgKwh.toFixed(3)     + '<span class="unit">kWh</span>';
+    document.getElementById('latestPower').innerHTML = latestPower.toFixed(1) + '<span class="unit">W</span>';
+
+    drawBar('dailyChart', dailyKwh.map(d => d.date), dailyKwh.map(d => d.kwh), '#60a5fa');
+    const recent = data.slice(-100);
+    drawLine('powerChart',
+      recent.map(r => r.ts.split(' ')[1]?.slice(0,5) ?? r.ts.slice(-5)),
+      recent.map(r => r.power),
+      '#fb923c'
+    );
+
+    let html = '', cumSum = 0;
+    dailyKwh.forEach(d => {
+      cumSum += d.kwh;
+      html += `<tr>
+        <td>${d.date}</td>
+        <td class="td-num">${d.kwh.toFixed(4)}</td>
+        <td class="td-num">${cumSum.toFixed(4)}</td>
+        <td class="td-num">${d.avgPower.toFixed(1)}</td>
+      </tr>`;
+    });
+    document.getElementById('tableBody').innerHTML = html;
+    document.getElementById('tableWrap').style.display = 'block';
+  }
+
+  function avg(arr) { return arr.reduce((s, v) => s + v, 0) / arr.length; }
+
+  function drawBar(id, labels, data, color) {
+    if (dailyChartInst) { dailyChartInst.destroy(); dailyChartInst = null; }
+    dailyChartInst = new Chart(document.getElementById(id), {
+      type: 'bar',
+      data: { labels, datasets: [{ data, backgroundColor: color + 'bb', borderColor: color, borderWidth: 1, borderRadius: 6 }] },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y.toFixed(4) + ' kWh' } } },
+        scales: {
+          x: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#1e293b' } },
+          y: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#334155' }, title: { display: true, text: 'kWh', color: '#475569' } }
+        }
+      }
+    });
+  }
+
+  function drawLine(id, labels, data, color) {
+    if (powerChartInst) { powerChartInst.destroy(); powerChartInst = null; }
+    powerChartInst = new Chart(document.getElementById(id), {
+      type: 'line',
+      data: { labels, datasets: [{ data, borderColor: color, backgroundColor: color + '22', fill: true, tension: 0.3, pointRadius: 0 }] },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ctx.parsed.y.toFixed(1) + ' W' } } },
+        scales: {
+          x: { ticks: { color: '#64748b', font: { size: 10 }, maxTicksLimit: 8 }, grid: { color: '#1e293b' } },
+          y: { ticks: { color: '#64748b', font: { size: 11 } }, grid: { color: '#334155' }, title: { display: true, text: 'W', color: '#475569' } }
+        }
+      }
+    });
+  }
+
+  function setStatus(msg, cls) {
+    const el = document.getElementById('status');
+    el.innerHTML = msg;
+    el.className = cls;
+  }
+</script>
+</body>
+</html>
